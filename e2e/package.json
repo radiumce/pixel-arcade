@@ -1,0 +1,17 @@
+{
+  "name": "nes-lobby-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser regressions for NES streaming and a standalone P2 receiver",
+  "scripts": {
+    "test": "node lobby-dual-browser.mjs && npm run test:stream",
+    "test:lobby": "node lobby-dual-browser.mjs",
+    "report": "ls -la artifacts/",
+    "test:stream": "node --test stream-latency.test.mjs stream-pixels.test.mjs stream-guest.test.mjs gamepad-input.test.mjs && node stream-webgl-capture.mjs && node stream-dual-browser.mjs",
+    "test:stream-hidden-host": "node stream-hidden-host.mjs",
+    "test:unit": "node --test stream-latency.test.mjs stream-pixels.test.mjs stream-guest.test.mjs gamepad-input.test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}

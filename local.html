@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>本地双人 · NES / 街机</title>
+  <link rel="stylesheet" href="/css/common.css?v=3" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="top-bar">
+      <div class="nav">
+        <a class="btn secondary" href="/">← 首页</a>
+        <a class="btn secondary" href="/online.html">联机房间</a>
+        <button type="button" class="secondary" id="btnJoyCon" data-joycon-button>连接 Joy-Con</button>
+      </div>
+      <div class="tab-bar" role="tablist" aria-label="视图切换">
+        <button type="button" class="tab-btn" role="tab" id="tabBtnPlay" data-tab="play" aria-selected="true" aria-controls="tabPlay">游戏画面</button>
+        <button type="button" class="tab-btn" role="tab" id="tabBtnRoms" data-tab="roms" aria-selected="false" aria-controls="tabRoms">
+          游戏列表 <span class="tab-badge" data-rom-count>0</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="tabPlay" role="tabpanel" data-tab-panel="play" aria-labelledby="tabBtnPlay">
+      <div id="famicomDeck"></div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:10px">
+          <h2 style="margin:0">模拟器画面</h2>
+          <div id="status">就绪</div>
+        </div>
+        <div id="game-shell"><div id="game"></div></div>
+      </div>
+
+      <div class="card" data-platform-content="nes">
+        <h2>默认键位</h2>
+        <div class="keys">
+          <div>
+            <strong>P1</strong>
+            <table>
+              <tr><th>按键</th><th>键位</th></tr>
+              <tr><td>方向</td><td><code>↑ ↓ ← →</code></td></tr>
+              <tr><td>B / A</td><td><code>J</code> / <code>K</code></td></tr>
+              <tr><td>Select / Start</td><td><code>Shift</code> / <code>Enter</code></td></tr>
+            </table>
+          </div>
+          <div>
+            <strong>P2</strong>
+            <table>
+              <tr><th>按键</th><th>键位</th></tr>
+              <tr><td>方向</td><td><code>W A S D</code></td></tr>
+              <tr><td>B / A</td><td><code>X</code> / <code>Z</code></td></tr>
+              <tr><td>Select / Start</td><td><code>I</code> / <code>U</code></td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card" data-platform-content="arcade" hidden>
+        <h2>街机键位</h2>
+        <p class="platform-help">Select 为投币。不同游戏的动作键数量不同，多余按键可忽略。</p>
+        <div class="keys">
+          <div><strong>P1</strong><table>
+            <tr><td>方向 / 投币 / Start</td><td><code>↑ ↓ ← →</code> / <code>Shift</code> / <code>Enter</code></td></tr>
+            <tr><td>动作 1–4</td><td><code>J K L I</code></td></tr>
+            <tr><td>动作 5–6</td><td><code>O P</code></td></tr>
+          </table></div>
+          <div><strong>P2</strong><table>
+            <tr><td>方向 / 投币 / Start</td><td><code>W A S D</code> / <code>Q</code> / <code>U</code></td></tr>
+            <tr><td>动作 1–4</td><td><code>X Z C V</code></td></tr>
+            <tr><td>动作 5–6</td><td><code>B N</code></td></tr>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tabRoms" role="tabpanel" data-tab-panel="roms" aria-labelledby="tabBtnRoms" hidden>
+      <div class="card">
+        <div class="rom-toolbar">
+          <h2 style="margin:0">游戏列表</h2>
+          <div class="row">
+            <label class="file-btn">
+              <span data-rom-upload-label>上传 NES ROM</span>
+              <input id="romFile" data-rom-accept type="file" accept=".nes,.unf,.fds,.nsf,application/octet-stream" />
+            </label>
+            <button type="button" class="good" id="btnTestRom" data-nes-only>测试 ROM</button>
+            <button type="button" class="secondary" id="btnRefresh">刷新</button>
+          </div>
+        </div>
+        <p class="platform-help" data-platform-content="arcade" hidden>上传与 FBNeo 核心匹配的原始 romset ZIP，不要解压或重命名。BIOS 和 Parent 可在下方按需配置。</p>
+        <details class="arcade-dependencies" data-platform-content="arcade" hidden>
+          <summary>BIOS 与 Parent ROM（部分游戏需要）</summary>
+          <p class="platform-help">Neo Geo 使用 neogeo.zip，PGM 使用 pgm.zip；克隆游戏可在启动前选择其 Parent。仅上传合法持有的文件。</p>
+          <div class="row"><select id="biosFile" aria-label="街机 BIOS 文件"><option value="">不使用 BIOS</option></select>
+            <label class="file-btn secondary"><span>上传 BIOS ZIP</span><input id="biosUpload" type="file" accept=".zip,application/zip" /></label>
+            <button type="button" class="danger" id="btnDeleteBios">删除所选 BIOS</button></div>
+        </details>
+        <ul class="rom-list" id="romList"><li class="rom-meta">加载中…</li></ul>
+        <div class="arcade-parent-picker" data-platform-content="arcade" hidden><label>Parent ROM（仅克隆游戏需要） <select id="parentRom"><option value="">不需要 Parent</option></select></label></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/gamepad-input.js?v=9"></script>
+  <script src="/js/emulator-common.js?v=arcade3"></script>
+  <script>
+    const {
+      setStatus, fetchRomList, uploadRom, deleteRom, renameRom,
+      renderRomList, refreshRoms, startEmulator, initTabs, renderFamicomDeck, getPlatform, platformForRom,
+      fetchBiosList, uploadBios, deleteBios,
+      TEST_ROM_URL, TEST_ROM_NAME
+    } = EmuCommon;
+    const statusEl = document.getElementById("status");
+    const romListEl = document.getElementById("romList");
+    const fileInput = document.getElementById("romFile");
+    const biosSelect = document.getElementById("biosFile");
+    const parentSelect = document.getElementById("parentRom");
+
+    initTabs("play");
+    renderFamicomDeck(document.getElementById("famicomDeck"), { canSwitchTab: true });
+
+    function launch(url, name) {
+      startEmulator({ romUrl: url, gameName: name, platform: platformForRom(name), netplay: false, statusEl,
+        biosUrl: biosSelect.value, parentUrl: parentSelect.value })
+        .catch(e => setStatus(statusEl, e.message || String(e), "error"));
+    }
+
+    async function refresh() {
+      try {
+        const roms = await refreshRoms();
+        const parents = roms.filter(r => r.name.toLowerCase().endsWith(".zip"));
+        parentSelect.innerHTML = '<option value="">不需要 Parent</option>' + parents.map(r => `<option value="${r.url}">${r.name}</option>`).join("");
+        parentSelect.value = localStorage.getItem("fbneo-parent-url") || "";
+        if (parentSelect.selectedIndex < 0) parentSelect.value = "";
+        const bios = await fetchBiosList();
+        biosSelect.innerHTML = '<option value="">不使用 BIOS</option>' + bios.map(r => `<option value="${r.url}">${r.name}</option>`).join("");
+        biosSelect.value = localStorage.getItem("fbneo-bios-url") || "";
+        if (biosSelect.selectedIndex < 0) biosSelect.value = "";
+        renderRomList(
+          romListEl,
+          roms.filter(r => platformForRom(r.name) === getPlatform()),
+          (r) => launch(r.url, r.name),
+          async (r) => {
+            if (!confirm(`确定删除 "${r.name}"？`)) return;
+            try {
+              await deleteRom(r.name);
+              setStatus(statusEl, `已删除：${r.name}`, "ok");
+              await refresh();
+            } catch (e) {
+              setStatus(statusEl, "删除失败：" + (e.message || e), "error");
+            }
+          },
+          async (r, newName) => {
+            try {
+              const res = await renameRom(r.name, newName);
+              setStatus(statusEl, `已重命名：${res.name}`, "ok");
+              await refresh();
+            } catch (e) {
+              setStatus(statusEl, "重命名失败：" + (e.message || e), "error");
+              throw e;
+            }
+          }
+        );
+      } catch (e) {
+        romListEl.innerHTML = '<li class="rom-meta">读取失败</li>';
+        setStatus(statusEl, "读取失败：" + e.message, "error");
+      }
+    }
+
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files && fileInput.files[0];
+      fileInput.value = "";
+      if (!file) return;
+      try {
+          if (platformForRom(file.name) !== getPlatform()) throw new Error(getPlatform() === "arcade" ? "街机平台只接受 ZIP romset" : "请切换到「街机」再上传 ZIP");
+          setStatus(statusEl, "正在上传：" + file.name);
+        const data = await uploadRom(file);
+        await refresh();
+        setStatus(statusEl, "已保存：" + data.name, "ok");
+        launch(data.url, data.name);
+      } catch (e) {
+        setStatus(statusEl, e.message || String(e), "error");
+      }
+    });
+    biosSelect.addEventListener("change", () => localStorage.setItem("fbneo-bios-url", biosSelect.value));
+    document.getElementById("btnDeleteBios").addEventListener("click", async () => {
+      if (!biosSelect.value) { setStatus(statusEl, "请先选择要删除的 BIOS", "error"); return; }
+      const name = biosSelect.selectedOptions[0].textContent;
+      if (!confirm(`确定删除 BIOS "${name}"？`)) return;
+      try {
+        await deleteBios(name);
+        localStorage.removeItem("fbneo-bios-url");
+        await refresh();
+        setStatus(statusEl, "BIOS 已删除：" + name, "ok");
+      } catch (e) { setStatus(statusEl, e.message || String(e), "error"); }
+    });
+    parentSelect.addEventListener("change", () => localStorage.setItem("fbneo-parent-url", parentSelect.value));
+    document.getElementById("biosUpload").addEventListener("change", async event => {
+      const file = event.target.files?.[0]; event.target.value = "";
+      if (!file) return;
+      try {
+        setStatus(statusEl, "正在上传 BIOS：" + file.name);
+        await uploadBios(file);
+        await refresh();
+        setStatus(statusEl, "BIOS 已保存：" + file.name, "ok");
+      } catch (e) { setStatus(statusEl, e.message || String(e), "error"); }
+    });
+
+    document.getElementById("btnTestRom").addEventListener("click", () => launch(TEST_ROM_URL, TEST_ROM_NAME));
+    document.getElementById("btnRefresh").addEventListener("click", () => refresh());
+    refresh();
+  </script>
+</body>
+</html>

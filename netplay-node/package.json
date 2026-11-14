@@ -1,0 +1,18 @@
+{
+  "name": "netplay-node",
+  "version": "1.0.0",
+  "description": "Socket.IO signaling server for WebRTC arcade netplay",
+  "main": "server.js",
+  "scripts": {
+    "test": "node --test *.test.js",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.4"
+  }
+}

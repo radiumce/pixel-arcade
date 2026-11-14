@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>联机大厅 · 红白机</title>
+  <link rel="stylesheet" href="/css/common.css?v=2" />
+  <style>
+    .lobby-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 700px) { .lobby-grid { grid-template-columns: 1fr; } }
+    .join-row input[type=text] {
+      background: #0c121b;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      padding: 8px 12px;
+      font: inherit;
+      width: 8.5em;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    #lobbyStatus { margin-top: 12px; color: var(--muted); min-height: 1.4em; font-size: 0.88rem; }
+    #lobbyStatus.error { color: #ff7b7b; }
+    #lobbyStatus.ok { color: var(--accent2); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top-bar">
+      <div class="nav">
+        <a class="btn secondary" href="/">← 首页</a>
+        <a class="btn secondary" href="/local.html">本地双人</a>
+      </div>
+    </div>
+    <h1>联机大厅</h1>
+
+    <div class="lobby-grid">
+      <div class="card">
+        <h2>P1 主机</h2>
+        <div class="row">
+          <button type="button" class="good" id="btnCreate">创建房间</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>P2 访客</h2>
+        <div class="row join-row">
+          <input id="joinCode" type="text" maxlength="8" placeholder="房间码" aria-label="房间码" autocomplete="off" />
+          <button type="button" id="btnJoin">加入房间</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="lobbyStatus"></div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("lobbyStatus");
+
+    function setStatus(msg, kind) {
+      statusEl.textContent = msg || "";
+      statusEl.className = kind || "";
+    }
+
+    function goPlay(room, role) {
+      const params = new URLSearchParams({ room: room.code, role });
+      location.href = "/online-stream.html?" + params.toString();
+    }
+
+    document.getElementById("btnCreate").addEventListener("click", async () => {
+      setStatus("正在创建房间…");
+      try {
+        const res = await fetch("/api/lobby/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "stream" }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok || !data.room) {
+          throw new Error(data.error || ("创建失败 HTTP " + res.status));
+        }
+        setStatus("已创建 " + data.room.code, "ok");
+        sessionStorage.setItem("lobby-host-" + data.room.code, data.room.hostToken);
+        goPlay(data.room, "host");
+      } catch (e) {
+        setStatus(e.message || String(e), "error");
+      }
+    });
+
+    async function joinByCode() {
+      const code = String(document.getElementById("joinCode").value || "").toUpperCase().trim();
+      if (!code) {
+        setStatus("请输入房间码", "error");
+        return;
+      }
+      setStatus("正在查找房间 " + code + " …");
+      try {
+        const res = await fetch("/api/lobby/" + encodeURIComponent(code), { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok || !data.room) {
+          throw new Error(data.error || "房间不存在或已过期");
+        }
+        setStatus("正在进入…", "ok");
+        goPlay(data.room, "guest");
+      } catch (e) {
+        setStatus(e.message || String(e), "error");
+      }
+    }
+
+    document.getElementById("btnJoin").addEventListener("click", joinByCode);
+    document.getElementById("joinCode").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") joinByCode();
+    });
+  </script>
+</body>
+</html>

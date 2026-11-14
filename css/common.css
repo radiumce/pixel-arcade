@@ -1,0 +1,429 @@
+:root {
+  --bg: #090d14;
+  --card: #131b28;
+  --card-elevated: #182334;
+  --text: #edf2f8;
+  --muted: #8b9bb0;
+  --accent: #3d9cf0;
+  --accent2: #2ecc71;
+  --accent-red: #e63946;
+  --accent-gold: #f4b942;
+  --warn: #f0b429;
+  --border: #253347;
+  --glow-blue: rgba(61, 156, 240, 0.25);
+  --glow-green: rgba(46, 204, 113, 0.25);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(900px 480px at 15% -8%, rgba(61, 156, 240, 0.16), transparent 70%),
+    radial-gradient(800px 420px at 85% 0%, rgba(230, 57, 70, 0.12), transparent 70%),
+    var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+.wrap { max-width: 960px; margin: 0 auto; padding: 20px 16px 44px; }
+h1 { font-size: 1.45rem; margin: 0 0 14px; display: flex; align-items: center; gap: 10px; }
+.card {
+  background: linear-gradient(180deg, rgba(26, 37, 54, 0.92), rgba(17, 24, 36, 0.96));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+.card h2 { font-size: 1rem; margin: 0 0 12px; letter-spacing: 0.02em; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button, .file-btn, a.btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: transform 0.14s ease, filter 0.14s ease, background 0.15s ease, border-color 0.15s ease;
+}
+button:hover:not(:disabled), .file-btn:hover, a.btn:hover { filter: brightness(1.08); }
+button:active:not(:disabled), .file-btn:active, a.btn:active { transform: translateY(1px); }
+button:focus-visible, .file-btn:focus-within, a.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+button.secondary, a.btn.secondary { background: #263449; color: #d9e4f2; }
+button.good, a.btn.good { background: var(--accent2); color: #081c10; border-color: rgba(46, 204, 113, 0.4); }
+button.danger, a.btn.danger { background: #8f2d2d; color: #fff; }
+button.danger:hover:not(:disabled), a.btn.danger:hover { background: #b83a3a; }
+button:disabled { opacity: 0.48; cursor: not-allowed; }
+input[type=file] { display: none; }
+
+/* Navigation & Header */
+.top-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.nav a.btn, .nav button { font-size: 0.88rem; padding: 7px 12px; }
+
+/* Segmented Tabs */
+.tab-bar {
+  display: inline-flex;
+  gap: 6px;
+  background: #0d131d;
+  padding: 5px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.tab-btn:hover:not(:disabled) {
+  color: var(--text);
+  filter: none;
+  background: rgba(255, 255, 255, 0.04);
+}
+.tab-btn[aria-selected="true"] {
+  background: linear-gradient(135deg, #253852, #1b283c);
+  color: #fff;
+  border-color: rgba(61, 156, 240, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 12px rgba(61, 156, 240, 0.18);
+}
+.tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: rgba(61, 156, 240, 0.2);
+  color: #7cc0ff;
+}
+
+/* Famicom Console Deck Card */
+.famicom-deck-card {
+  position: relative;
+  padding: 14px 18px;
+  background:
+    radial-gradient(ellipse at 50% 10%, rgba(230, 57, 70, 0.14), transparent 70%),
+    linear-gradient(180deg, #162030 0%, #0f1622 100%);
+  overflow: hidden;
+}
+.famicom-deck-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.platform-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin: -4px 0 12px;
+  background: rgba(4, 9, 16, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+}
+.platform-tab {
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 750;
+  cursor: pointer;
+}
+.platform-tab span { margin-left: 7px; font-size: 0.68rem; opacity: 0.65; letter-spacing: 0.08em; }
+.platform-tab[aria-selected="true"] { background: #293a52; color: #dcebff; box-shadow: inset 0 0 0 1px #426084; }
+.famicom-deck-card[data-platform="arcade"] {
+  background: radial-gradient(ellipse at 50% 10%, rgba(227, 76, 63, 0.18), transparent 65%),
+    linear-gradient(180deg, #182334 0%, #0d141f 100%);
+}
+.famicom-deck-card[data-platform="arcade"] .platform-tab[aria-selected="true"] { background: #713b35; color: #fff0d2; box-shadow: inset 0 0 0 1px #a85b48; }
+.arcade-stage { display: flex; justify-content: center; cursor: pointer; user-select: none; }
+.arcade-svg { display: block; width: 100%; max-width: 560px; height: auto; filter: drop-shadow(0 12px 18px rgba(0,0,0,.55)); }
+[data-platform-content][hidden], [data-nes-only][hidden] { display: none !important; }
+.platform-help { margin: -3px 0 12px; color: var(--muted); font-size: 0.84rem; line-height: 1.55; }
+.arcade-dependencies { padding: 10px 12px; margin: 0 0 12px; border: 1px solid #66483c; border-radius: 9px; background: rgba(227,76,63,.05); }
+.arcade-dependencies summary { cursor: pointer; font-weight: 700; color: #ffd39a; }
+.arcade-dependencies .platform-help { margin: 10px 0; }
+.arcade-dependencies select, .arcade-parent-picker select { min-height: 34px; max-width: 100%; background: #0c1420; color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 5px 8px; }
+.arcade-parent-picker { padding: 10px 6px; font-size: .86rem; color: var(--muted); }
+.arcade-parent-picker label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.famicom-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  max-width: 65%;
+}
+.famicom-status-pill .pill-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.famicom-status-pill.loaded {
+  background: rgba(46, 204, 113, 0.12);
+  border-color: rgba(46, 204, 113, 0.38);
+  color: #7ef0aa;
+}
+.famicom-led-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #526075;
+  flex-shrink: 0;
+}
+.famicom-status-pill.loaded .famicom-led-dot {
+  background: #2ecc71;
+  box-shadow: 0 0 8px #2ecc71;
+}
+.famicom-stage {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+.famicom-svg {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.55));
+}
+.famicom-svg .fc-cartridge {
+  transform: translateY(-48px);
+  opacity: 0;
+  transition: transform 0.45s cubic-bezier(0.22, 1.15, 0.36, 1), opacity 0.28s ease;
+  pointer-events: none;
+}
+.famicom-deck-card[data-loaded="true"] .famicom-svg .fc-cartridge {
+  transform: translateY(0);
+  opacity: 1;
+}
+.famicom-deck-card[data-loaded="true"] .famicom-svg .fc-empty-hint {
+  opacity: 0;
+  pointer-events: none;
+}
+.famicom-svg .fc-empty-hint {
+  transition: opacity 0.25s ease;
+}
+.famicom-svg .fc-power-knob {
+  transition: transform 0.3s ease;
+}
+.famicom-deck-card[data-loaded="true"] .famicom-svg .fc-power-knob {
+  transform: translateY(-9px);
+}
+.famicom-svg .fc-power-led {
+  fill: #4a171e;
+  transition: fill 0.3s ease, filter 0.3s ease;
+}
+.famicom-deck-card[data-loaded="true"] .famicom-svg .fc-power-led {
+  fill: #ff2a4b;
+  filter: drop-shadow(0 0 6px #ff2a4b);
+}
+.famicom-svg .fc-slot-flap {
+  transition: opacity 0.25s ease;
+}
+.famicom-deck-card[data-loaded="true"] .famicom-svg .fc-slot-flap {
+  opacity: 0.15;
+}
+.fc-cart-sticker-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2px 8px;
+  text-align: center;
+  overflow: hidden;
+}
+.fc-cart-sticker-title {
+  width: 100%;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #161922;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+}
+.fc-cart-sticker-sub {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #697386;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ROM List & Max Length Truncation + Inline Rename */
+.rom-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.rom-list { list-style: none; padding: 0; margin: 0; }
+.rom-list li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 6px;
+  border-bottom: 1px solid rgba(42, 54, 72, 0.7);
+  min-width: 0;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+.rom-list li:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+.rom-list li:last-child { border-bottom: 0; }
+.rom-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.rom-cart-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  background: rgba(61, 156, 240, 0.12);
+  border: 1px solid rgba(61, 156, 240, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+body[data-platform="arcade"] .rom-cart-icon { color: #ffc76b; border-color: rgba(255,199,107,.35); background: rgba(227,76,63,.12); }
+.rom-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+.rom-title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text);
+  max-width: min(26ch, 48vw);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rom-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rom-rename-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+.rom-rename-input {
+  flex: 1;
+  min-width: 0;
+  max-width: 260px;
+  background: #0b1018;
+  border: 1px solid var(--accent);
+  border-radius: 7px;
+  color: var(--text);
+  padding: 5px 9px;
+  font: inherit;
+  font-size: 0.9rem;
+}
+.rom-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.rom-actions button {
+  padding: 6px 11px;
+  font-size: 0.84rem;
+}
+
+/* Game Screen & Keybindings */
+#game-shell {
+  width: 100%;
+  max-width: 800px;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+#game { width: 100%; height: 100%; }
+#status { color: var(--muted); min-height: 1.3em; font-size: 0.88rem; }
+#status.error { color: #ff7b7b; }
+#status.ok { color: var(--accent2); }
+
+.keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 700px) { .keys { grid-template-columns: 1fr; } }
+table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; }
+code {
+  background: #0c121b;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.88em;
+}
+a { color: var(--accent); }

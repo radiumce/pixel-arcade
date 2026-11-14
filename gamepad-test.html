@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>手柄诊断</title>
+  <style>
+    body { font: 14px/1.6 system-ui, sans-serif; background: #111; color: #eee; margin: 24px; }
+    pre { background: #000; padding: 12px; border-radius: 6px; white-space: pre-wrap; }
+    .warn { color: #fc4; }
+  </style>
+</head>
+<body>
+  <h2>手柄诊断</h2>
+  <p id="hint" class="warn">未检测到手柄：请让本页获得焦点（点一下页面），然后按一下手柄上的任意按键。</p>
+  <pre id="out">等待手柄……</pre>
+  <h3>Joy-Con（WebHID）</h3>
+  <p>macOS 上 Chrome 的 Gamepad API 看不到单个 Joy-Con 时，点下面按钮用 WebHID 直连（需 localhost 或 https）。</p>
+  <button type="button" id="btnHid" data-joycon-button>连接 Joy-Con</button>
+  <pre id="hidOut">未连接（若在系统蓝牙中重新配对过手柄，请点击上方「连接 Joy-Con」重新授权）</pre>
+  <p>排查：Joy-Con 先用系统蓝牙配对，并确保没有被其他程序（如 Steam）独占；
+     Chrome 地址栏输入 <code>chrome://gamepad</code> 也能看到同样的信息。</p>
+  <script src="/js/gamepad-input.js?v=9"></script>
+  <script>
+    const out = document.getElementById("out"), hint = document.getElementById("hint");
+    const log = [];
+    for (const type of ["gamepadconnected", "gamepaddisconnected"]) {
+      window.addEventListener(type, e => {
+        log.push(new Date().toLocaleTimeString() + " " + type + ": " + e.gamepad.id);
+        if (log.length > 8) log.shift();
+      });
+    }
+    const hidOut = document.getElementById("hidOut"), btnHid = document.getElementById("btnHid");
+    const hidState = new Map();
+    function watchRawReports(device) {
+      if (hidState.has(device)) return;
+      const st = { name: device.productName || "Joy-Con", last: "（尚无报告，请按手柄按键）", count: 0 };
+      hidState.set(device, st);
+      device.addEventListener("inputreport", e => {
+        st.count++;
+        st.last = "report 0x" + e.reportId.toString(16) + ": " +
+          [...new Uint8Array(e.data.buffer, e.data.byteOffset, e.data.byteLength)]
+            .map(b => b.toString(16).padStart(2, "0")).join(" ");
+      });
+    }
+    if (!navigator.hid) {
+      btnHid.disabled = true;
+      hidOut.textContent = "此浏览器/地址不支持 WebHID";
+    } else {
+      const syncGranted = () => navigator.hid.getDevices().then(ds => ds.forEach(watchRawReports)).catch(() => {});
+      syncGranted();
+      window.GamepadInput?.JoyConHID?.onChange?.(syncGranted);
+    }
+    (function frame() {
+      if (hidState.size) hidOut.textContent = [...hidState.values()]
+        .map(s => `${s.name}  已收到 ${s.count} 个报告\n  ${s.last}`).join("\n");
+      const pads = [...(navigator.getGamepads?.() || [])].filter(p => p && p.connected);
+      hint.hidden = pads.length > 0;
+      let text = "";
+      for (const pad of pads) {
+        const pressed = pad.buttons.map((b, i) => b.pressed ? i : null).filter(i => i !== null);
+        text += `#${pad.index} ${pad.id}\n  mapping: "${pad.mapping}"  按键数: ${pad.buttons.length}  轴数: ${pad.axes.length}\n` +
+          `  按下的按键编号: [${pressed.join(", ")}]\n  轴: [${pad.axes.map(a => a.toFixed(2)).join(", ")}]\n\n`;
+      }
+      out.textContent = (text || "尚无手柄\n\n") + "事件日志:\n" + log.join("\n");
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>联机串流 · NES / 街机</title>
+  <link rel="stylesheet" href="/css/common.css?v=3" />
+  <style>
+    /* Merged Room & Telemetry HUD Card */
+    .telemetry-card {
+      background:
+        radial-gradient(600px 220px at 10% 0%, rgba(61, 156, 240, 0.14), transparent 70%),
+        radial-gradient(500px 220px at 90% 100%, rgba(46, 204, 113, 0.1), transparent 70%),
+        linear-gradient(180deg, #151f2e 0%, #0e1520 100%);
+      border: 1px solid #283a52;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hud-top {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 16px;
+      align-items: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    @media (max-width: 760px) {
+      .hud-top { grid-template-columns: 1fr; gap: 12px; }
+    }
+    .room-pod {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(9, 13, 20, 0.65);
+      border: 1px solid rgba(61, 156, 240, 0.3);
+      border-radius: 12px;
+      padding: 8px 12px;
+    }
+    .room-pod-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .room-code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      color: #fff;
+      text-shadow: 0 0 14px rgba(61, 156, 240, 0.45);
+      line-height: 1.1;
+    }
+    .btn-copy {
+      padding: 6px 11px;
+      font-size: 0.8rem;
+      border-radius: 8px;
+    }
+
+    /* Topology Link SVG */
+    .topo-pod {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+    }
+    .topo-svg {
+      width: 100%;
+      max-width: 310px;
+      height: 46px;
+      overflow: visible;
+    }
+    .topo-line-bg {
+      stroke: #26354a;
+      stroke-width: 2.5;
+    }
+    .topo-line-active {
+      stroke: #3d9cf0;
+      stroke-width: 2.5;
+      stroke-dasharray: 6 6;
+      opacity: 0.35;
+      transition: stroke 0.3s ease, opacity 0.3s ease;
+    }
+    .telemetry-card[data-link="connected"] .topo-line-active {
+      stroke: #2ecc71;
+      opacity: 1;
+      animation: topoFlow 0.9s linear infinite;
+    }
+    @keyframes topoFlow {
+      to { stroke-dashoffset: -12; }
+    }
+    .topo-node-circle {
+      fill: #162234;
+      stroke: #3b506e;
+      stroke-width: 2;
+      transition: fill 0.3s ease, stroke 0.3s ease, filter 0.3s ease;
+    }
+    .topo-node-circle.active {
+      fill: #133126;
+      stroke: #2ecc71;
+      filter: drop-shadow(0 0 6px rgba(46, 204, 113, 0.55));
+    }
+
+    /* Status Pill Pod */
+    .status-pod {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(9, 13, 20, 0.55);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 14px;
+      justify-self: end;
+      max-width: 100%;
+    }
+    @media (max-width: 760px) {
+      .status-pod { justify-self: stretch; }
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--warn);
+      box-shadow: 0 0 10px var(--warn);
+      flex-shrink: 0;
+      animation: statusPulse 1.8s ease-in-out infinite;
+    }
+    .telemetry-card[data-link="connected"] .status-dot {
+      background: var(--accent2);
+      box-shadow: 0 0 10px var(--accent2);
+    }
+    .telemetry-card[data-link="error"] .status-dot {
+      background: #ff5c5c;
+      box-shadow: 0 0 10px #ff5c5c;
+      animation: none;
+    }
+    @keyframes statusPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(0.82); opacity: 0.55; }
+    }
+    #status {
+      margin: 0;
+      min-height: 0;
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    #status.ok { color: #7ef0aa; }
+    #status.error { color: #ff7b7b; }
+
+    /* 4-Column Telemetry Charts Grid */
+    .hud-metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    @media (max-width: 760px) {
+      .hud-metrics { grid-template-columns: repeat(2, 1fr); }
+    }
+    .metric-box {
+      background: rgba(10, 15, 23, 0.6);
+      border: 1px solid rgba(45, 62, 86, 0.65);
+      border-radius: 10px;
+      padding: 9px 11px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 6px;
+      min-width: 0;
+    }
+    .metric-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .metric-label {
+      font-size: 0.73rem;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+    .metric-val {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.98rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .sparkline-svg {
+      width: 100%;
+      height: 28px;
+      display: block;
+      overflow: visible;
+    }
+    .metric-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .signal-bars {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 12px;
+    }
+    .signal-bars span {
+      width: 3px;
+      border-radius: 1px;
+      background: #2b394e;
+      transition: background 0.25s ease;
+    }
+    .signal-bars span:nth-child(1) { height: 4px; }
+    .signal-bars span:nth-child(2) { height: 7px; }
+    .signal-bars span:nth-child(3) { height: 10px; }
+    .signal-bars span:nth-child(4) { height: 12px; }
+    .signal-bars[data-level="4"] span { background: #2ecc71; }
+    .signal-bars[data-level="3"] span:nth-child(-n+3) { background: #2ecc71; }
+    .signal-bars[data-level="2"] span:nth-child(-n+2) { background: #f0b429; }
+    .signal-bars[data-level="1"] span:nth-child(1) { background: #ff5c5c; }
+
+    .gauge-track {
+      width: 100%;
+      height: 6px;
+      background: #1b2636;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 6px 0;
+    }
+    .gauge-fill {
+      height: 100%;
+      width: 18%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #3d9cf0, #2ecc71);
+      transition: width 0.35s ease;
+    }
+
+    .node-ring-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .node-ring-svg {
+      width: 32px;
+      height: 32px;
+      flex-shrink: 0;
+      transform: rotate(-90deg);
+    }
+    .tag {
+      display: inline-block;
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(61, 156, 240, 0.18);
+      border: 1px solid rgba(61, 156, 240, 0.35);
+      color: #8bc8ff;
+    }
+
+    #game { position: relative; }
+    #guestCanvas { position: absolute; }
+    #guestControls { margin-top: 10px; }
+    #guestControls label { display: flex; align-items: center; gap: 6px; font-size: 0.86rem; }
+    #guestTouch { display: none; justify-content: space-between; gap: 12px; margin-top: 12px; }
+    #guestTouch button { touch-action: none; user-select: none; min-width: 44px; }
+    #guestTouch button[aria-pressed="true"] { background: var(--accent2); }
+    .touch-arcade-buttons { display: grid; grid-template-columns: repeat(3, 44px); gap: 5px; align-content: center; }
+    .touch-arcade-menu { display: flex; align-items: center; gap: 5px; }
+    .dpad { display: grid; grid-template-columns: repeat(3, 44px); gap: 4px; }
+    .dpad button:first-child { grid-column: 2; }
+    .dpad button:nth-child(2) { grid-column: 1; }
+    @media (pointer: coarse) { #guestTouch { display: flex; } }
+    #gameCard:fullscreen { width: 100vw; height: 100vh; margin: 0; border: 0; border-radius: 0;
+      display: flex; flex-direction: column; background: #000; }
+    #gameCard:fullscreen #game-shell { flex: 1; min-height: 0; max-width: none; aspect-ratio: auto; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top-bar">
+      <div class="nav">
+        <a class="btn secondary" href="/">← 首页</a>
+        <a class="btn secondary" href="/online.html">← 大厅</a>
+        <a class="btn secondary" href="/local.html">本地双人</a>
+        <button type="button" class="secondary" id="btnJoyCon" data-joycon-button>连接 Joy-Con</button>
+      </div>
+      <div class="tab-bar" role="tablist" aria-label="视图切换">
+        <button type="button" class="tab-btn" role="tab" id="tabBtnPlay" data-tab="play" aria-selected="true" aria-controls="tabPlay">游戏画面</button>
+        <button type="button" class="tab-btn" role="tab" id="tabBtnRoms" data-tab="roms" aria-selected="false" aria-controls="tabRoms" data-host-only>
+          游戏列表 <span class="tab-badge" data-rom-count>0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Merged Room Code & Live Connection Telemetry Card -->
+    <div class="card telemetry-card" id="telemetryCard" data-link="waiting">
+      <div class="hud-top">
+        <div class="room-pod">
+          <div>
+            <div class="room-pod-label">ROOM</div>
+            <div class="room-code" id="roomCode">——</div>
+          </div>
+          <button type="button" class="secondary btn-copy" id="btnCopy">复制房间码</button>
+        </div>
+
+        <div class="topo-pod" aria-hidden="true">
+          <svg class="topo-svg" viewBox="0 0 300 44">
+            <line class="topo-line-bg" x1="42" y1="22" x2="258" y2="22" />
+            <line class="topo-line-active" x1="42" y1="22" x2="258" y2="22" />
+            <!-- P1 Node -->
+            <circle class="topo-node-circle active" id="topoP1" cx="26" cy="22" r="16" />
+            <text x="26" y="26" text-anchor="middle" font-size="10" font-weight="800" fill="#e7ecf3">P1</text>
+            <!-- Center Mode Pill -->
+            <rect x="106" y="10" width="88" height="24" rx="12" fill="#0d1420" stroke="#2d4059" stroke-width="1.2" />
+            <text id="topoModeText" x="150" y="25" text-anchor="middle" font-size="9.5" font-weight="800" fill="#7cc0ff" letter-spacing="0.06em">STANDBY</text>
+            <!-- P2 Node -->
+            <circle class="topo-node-circle" id="topoP2" cx="274" cy="22" r="16" />
+            <text x="274" y="26" text-anchor="middle" font-size="10" font-weight="800" fill="#e7ecf3">P2</text>
+          </svg>
+        </div>
+
+        <div class="status-pod">
+          <span class="status-dot" id="statusDot"></span>
+          <div id="status">准备中…</div>
+          <button type="button" id="btnRetry" style="padding:5px 10px;font-size:0.8rem" hidden>重试</button>
+        </div>
+      </div>
+
+      <div class="hud-metrics">
+        <!-- FPS Sparkline Widget -->
+        <div class="metric-box">
+          <div class="metric-head">
+            <span class="metric-label">FPS</span>
+            <span class="metric-val" id="metricFps">--</span>
+          </div>
+          <svg class="sparkline-svg" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="fpsGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2ecc71" stop-opacity="0.42"/>
+                <stop offset="100%" stop-color="#2ecc71" stop-opacity="0.0"/>
+              </linearGradient>
+            </defs>
+            <path id="fpsSparkArea" d="M0,28 L120,28 Z" fill="url(#fpsGrad)"/>
+            <polyline id="fpsSparkLine" fill="none" stroke="#2ecc71" stroke-width="1.8" points="0,26 120,26"/>
+          </svg>
+          <div class="metric-foot">
+            <span id="metricFrames">0 帧</span>
+            <span>60Hz</span>
+          </div>
+        </div>
+
+        <!-- RTT Latency Sparkline Widget -->
+        <div class="metric-box">
+          <div class="metric-head">
+            <span class="metric-label">RTT</span>
+            <span class="metric-val" id="metricRtt">-- ms</span>
+          </div>
+          <svg class="sparkline-svg" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="rttGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#3d9cf0" stop-opacity="0.42"/>
+                <stop offset="100%" stop-color="#3d9cf0" stop-opacity="0.0"/>
+              </linearGradient>
+            </defs>
+            <path id="rttSparkArea" d="M0,28 L120,28 Z" fill="url(#rttGrad)"/>
+            <polyline id="rttSparkLine" fill="none" stroke="#3d9cf0" stroke-width="1.8" points="0,26 120,26"/>
+          </svg>
+          <div class="metric-foot">
+            <span>信号</span>
+            <span class="signal-bars" id="rttSignalBars" data-level="0">
+              <span></span><span></span><span></span><span></span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Transport & Input Channel Widget -->
+        <div class="metric-box">
+          <div class="metric-head">
+            <span class="metric-label">通道</span>
+            <span class="metric-val" id="metricEngine" style="font-size:0.86rem">待机</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" id="engineGaugeFill"></div>
+          </div>
+          <div class="metric-foot">
+            <span id="metricResolution">256×224</span>
+            <span id="metricInputMode">等待连接</span>
+          </div>
+        </div>
+
+        <!-- ICE & Role Widget -->
+        <div class="metric-box">
+          <div class="metric-head">
+            <span class="metric-label">节点</span>
+            <span class="tag" id="roleTag">…</span>
+          </div>
+          <div class="node-ring-row">
+            <svg class="node-ring-svg" viewBox="0 0 36 36" aria-hidden="true">
+              <circle cx="18" cy="18" r="14" fill="none" stroke="#1e2b3c" stroke-width="4"/>
+              <circle id="iceRingCircle" cx="18" cy="18" r="14" fill="none" stroke="#3d9cf0" stroke-width="4"
+                stroke-dasharray="88" stroke-dashoffset="44" stroke-linecap="round"/>
+            </svg>
+            <div style="min-width:0">
+              <div id="iceInfo" style="font-size:0.82rem;font-weight:700;color:#d6e4f5">ICE：加载中…</div>
+              <div id="streamStatus" style="font-size:0.72rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">待机</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 1: Game Screen + Famicom SVG Console -->
+    <div id="tabPlay" role="tabpanel" data-tab-panel="play" aria-labelledby="tabBtnPlay">
+      <div id="famicomDeck"></div>
+
+      <div class="card" id="gameCard">
+        <div class="row" style="justify-content:space-between;margin-bottom:10px">
+          <h2 id="screenTitle" style="margin:0">游戏画面</h2>
+          <button type="button" class="secondary" id="btnResumeStream" data-guest-only hidden style="padding:6px 12px;font-size:0.82rem">恢复画面播放</button>
+        </div>
+        <div id="game-shell"><div id="game"></div></div>
+        <div class="row" id="guestControls" hidden>
+          <button type="button" class="secondary" id="btnGuestFullscreen">全屏</button>
+          <button type="button" class="secondary" id="btnGuestMute">静音</button>
+          <button type="button" class="secondary" data-joycon-button>连接 Joy-Con</button>
+          <label>音量 <input id="guestVolume" type="range" min="0" max="1" step="0.05" value="1" /></label>
+        </div>
+        <div id="guestTouch" hidden>
+          <div class="dpad">
+            <button data-guest-button="4" aria-label="上">↑</button>
+            <button data-guest-button="6" aria-label="左">←</button>
+            <button data-guest-button="5" aria-label="下">↓</button>
+            <button data-guest-button="7" aria-label="右">→</button>
+          </div>
+          <div class="touch-arcade-menu" data-platform-content="nes">
+            <button data-guest-button="2">Select</button><button data-guest-button="3">Start</button>
+            <button data-guest-button="0">B</button><button data-guest-button="8">A</button>
+          </div>
+          <div data-platform-content="arcade" hidden>
+            <div class="touch-arcade-menu"><button data-guest-button="2">投币</button><button data-guest-button="3">Start</button></div>
+            <div class="touch-arcade-buttons"><button data-guest-button="1">3</button><button data-guest-button="9">4</button><button data-guest-button="10">5</button><button data-guest-button="0">1</button><button data-guest-button="8">2</button><button data-guest-button="11">6</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="card" data-platform-content="nes" data-guest-only hidden>
+        <h2>NES 键位</h2><p class="platform-help">方向键移动，J / K 为 B / A，Shift 为 Select，Enter 为 Start。</p>
+      </div>
+      <div class="card" data-platform-content="arcade" data-guest-only hidden>
+        <h2>街机键位</h2><p class="platform-help">方向键移动，Shift 投币，Enter 开始；动作键 J / K / L / I / O / P。不同游戏使用的动作键数量不同。</p>
+      </div>
+      <div class="card" data-platform-content="nes" data-host-only>
+        <h2>默认键位</h2><p class="platform-help">P1：方向键 + J / K，Shift / Enter；P2：WASD + X / Z，I / U。</p>
+      </div>
+      <div class="card" data-platform-content="arcade" data-host-only hidden>
+        <h2>街机键位</h2><p class="platform-help">P1：方向键，Shift 投币，Enter 开始，J / K / L / I / O / P 动作；P2：WASD，Q 投币，U 开始，X / Z / C / V / B / N 动作。</p>
+      </div>
+    </div>
+
+    <!-- Tab 2: ROM List (Host Only) -->
+    <div id="tabRoms" role="tabpanel" data-tab-panel="roms" aria-labelledby="tabBtnRoms" data-host-only hidden>
+      <div class="card">
+        <div class="rom-toolbar">
+          <h2 style="margin:0">游戏列表</h2>
+          <div class="row">
+            <label class="file-btn">
+              <span data-rom-upload-label>上传 NES ROM</span>
+              <input id="romFile" data-rom-accept type="file" accept=".nes,.unf,.fds,.nsf,application/octet-stream" />
+            </label>
+            <button type="button" class="good" id="btnTestRom" data-nes-only>测试 ROM</button>
+            <button type="button" class="secondary" id="btnRefresh">刷新</button>
+          </div>
+        </div>
+        <p class="platform-help" data-platform-content="arcade" hidden>上传与 FBNeo 核心匹配的原始 romset ZIP，不要解压或重命名。BIOS 和 Parent 可在下方按需配置。</p>
+        <details class="arcade-dependencies" data-platform-content="arcade" hidden>
+          <summary>BIOS 与 Parent ROM（部分游戏需要）</summary>
+          <p class="platform-help">Neo Geo 使用 neogeo.zip，PGM 使用 pgm.zip；克隆游戏可在启动前选择其 Parent。</p>
+          <div class="row"><select id="biosFile" aria-label="街机 BIOS 文件"><option value="">不使用 BIOS</option></select>
+            <label class="file-btn secondary"><span>上传 BIOS ZIP</span><input id="biosUpload" type="file" accept=".zip,application/zip" /></label>
+            <button type="button" class="danger" id="btnDeleteBios">删除所选 BIOS</button></div>
+        </details>
+        <ul class="rom-list" id="romList"><li class="rom-meta">加载中…</li></ul>
+        <div class="arcade-parent-picker" data-platform-content="arcade" hidden><label>Parent ROM（仅克隆游戏需要） <select id="parentRom"><option value="">不需要 Parent</option></select></label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- stream-pixels.js must load before EmulatorJS creates its WebGL context. -->
+  <script src="/js/stream-pixels.js?v=8"></script>
+  <script src="/vendor/socket.io.min.js"></script>
+  <script src="/js/stream-guest.js?v=arcade2"></script>
+  <script src="/js/gamepad-input.js?v=9"></script>
+  <script src="/js/emulator-common.js?v=arcade3"></script>
+  <script src="/js/lobby-session.js?v=stream-only2"></script>
+  <script>
+    const { code: roomCode, role } = LobbySession;
+    document.getElementById("roomCode").textContent = roomCode;
+    document.getElementById("roleTag").textContent = role === "host" ? "P1 · 主机" : "P2 · 访客";
+
+    document.getElementById("btnCopy").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(roomCode);
+        document.getElementById("btnCopy").textContent = "已复制";
+        setTimeout(() => { document.getElementById("btnCopy").textContent = "复制房间码"; }, 1500);
+      } catch (_) { prompt("复制房间码：", roomCode); }
+    });
+
+    const {
+      setStatus, fetchRomList, uploadRom, deleteRom, renameRom,
+      renderRomList, refreshRoms, startEmulator, loadIceServers,
+      initTabs, renderFamicomDeck, setFamicomCartridge,
+      getPlatform, setPlatform, platformForRom,
+      fetchBiosList, uploadBios, deleteBios,
+      TEST_ROM_URL, TEST_ROM_NAME
+    } = EmuCommon;
+
+    const statusEl = document.getElementById("status");
+    const romListEl = document.getElementById("romList");
+    let launching = false;
+    const biosSelect = document.getElementById("biosFile");
+    const parentSelect = document.getElementById("parentRom");
+
+    LobbySession.hideGuestRomControls();
+    initTabs("play");
+    renderFamicomDeck(document.getElementById("famicomDeck"), { canSwitchTab: role === "host" });
+    if (role === "guest") document.querySelectorAll("[data-guest-only]").forEach(el => { el.hidden = false; });
+    if (role === "host") document.querySelectorAll("[data-guest-only]").forEach(el => el.remove());
+    setPlatform("nes");
+
+    // Live Telemetry Sparklines & HUD Updater
+    const fpsHistory = new Array(20).fill(0);
+    const rttHistory = new Array(20).fill(0);
+
+    function drawSparkline(values, maxVal, lineId, areaId) {
+      const w = 120, h = 28, pad = 3;
+      const pts = values.map((v, i) => {
+        const x = (i / (values.length - 1)) * w;
+        const clamped = Math.max(0, Math.min(maxVal, v || 0));
+        const y = h - pad - (clamped / maxVal) * (h - pad * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      });
+      document.getElementById(lineId)?.setAttribute("points", pts.join(" "));
+      document.getElementById(areaId)?.setAttribute("d", `M0,${h} L${pts.join(" L")} L${w},${h} Z`);
+    }
+
+    function updateTelemetryHud() {
+      const card = document.getElementById("telemetryCard");
+      const snap = window.__streamDebug?.getState?.();
+      if (statusEl.classList.contains("error")) {
+        card.dataset.link = "error";
+      } else if (snap?.peers?.some(p => p.state === "connected")) {
+        card.dataset.link = "connected";
+      } else {
+        card.dataset.link = "waiting";
+      }
+
+      const peer = snap?.peers?.[0];
+      const connected = peer?.state === "connected";
+      document.getElementById("topoP2")?.classList.toggle("active", !!connected);
+
+      const pixelActive = !!snap?.pixel?.active;
+      const fpsVal = pixelActive ? (peer?.pixel?.fps ?? peer?.fps) : peer?.fps;
+      const rttVal = peer?.path?.roundTripTime != null ? peer.path.roundTripTime * 1000 : null;
+      const framesCount = pixelActive
+        ? (snap.role === "host" ? (peer?.pixel?.sent || 0) : (snap?.pixel?.presenter?.presented || 0))
+        : (peer?.frames || 0);
+
+      fpsHistory.push(fpsVal != null ? fpsVal : 0);
+      if (fpsHistory.length > 20) fpsHistory.shift();
+      drawSparkline(fpsHistory, 65, "fpsSparkLine", "fpsSparkArea");
+
+      rttHistory.push(rttVal != null ? rttVal : 0);
+      if (rttHistory.length > 20) rttHistory.shift();
+      drawSparkline(rttHistory, 120, "rttSparkLine", "rttSparkArea");
+
+      document.getElementById("metricFps").textContent = fpsVal != null ? `${fpsVal.toFixed(0)} FPS` : "--";
+      document.getElementById("metricFrames").textContent = `${framesCount} 帧`;
+      document.getElementById("metricRtt").textContent = rttVal != null ? `${rttVal.toFixed(0)} ms` : "-- ms";
+
+      const bars = document.getElementById("rttSignalBars");
+      if (rttVal == null) bars.dataset.level = connected ? "3" : "0";
+      else if (rttVal < 25) bars.dataset.level = "4";
+      else if (rttVal < 60) bars.dataset.level = "3";
+      else if (rttVal < 120) bars.dataset.level = "2";
+      else bars.dataset.level = "1";
+
+      const modeText = !snap?.joined ? "STANDBY" : pixelActive ? "PIXEL 60Hz" : connected ? "VP8 STREAM" : "LINKING";
+      document.getElementById("topoModeText").textContent = modeText;
+      document.getElementById("metricEngine").textContent = !snap?.joined ? "待机" : pixelActive ? "无损像素" : connected ? "VP8 视频" : "连接中";
+      document.getElementById("engineGaugeFill").style.width = !snap?.joined ? "15%" : connected ? (pixelActive ? "100%" : "72%") : "40%";
+
+      const size = snap?.pixel?.size || (snap?.video?.width ? [snap.video.width, snap.video.height] : [256, 224]);
+      document.getElementById("metricResolution").textContent = `${size[0]}×${size[1]}`;
+      document.getElementById("metricInputMode").textContent = peer?.inputTransport === "unreliable-state" ? "极速输入" : (connected ? "可靠通道" : "等待连接");
+    }
+    setInterval(updateTelemetryHud, 1000);
+
+    const hostSetup = role === "host" ? LobbySession.publish({ reset: true }) : Promise.resolve();
+    hostSetup.catch(error => LobbySession.fail(statusEl, error));
+
+    const iceReady = loadIceServers().then(servers => {
+      document.getElementById("iceInfo").textContent = "ICE：" + servers.length + " 节点";
+      document.getElementById("iceRingCircle")?.setAttribute("stroke-dashoffset", servers.length ? "18" : "66");
+      return servers;
+    });
+
+    async function launch(url, name) {
+      if (launching) return;
+      launching = true;
+      LobbySession.lockRomControls();
+      try {
+        await hostSetup;
+        await new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "/js/stream-netplay.js?v=standalone-guest2";
+          script.onload = resolve;
+          script.onerror = () => reject(new Error("串流服务加载失败"));
+          document.head.appendChild(script);
+        });
+        await startEmulator({ romUrl: url, gameName: name, platform: platformForRom(name), netplay: true, statusEl,
+          biosUrl: biosSelect.value, parentUrl: parentSelect.value });
+        const emu = await LobbySession.waitForEmulator();
+        setStatus(statusEl, "正在建房…");
+        const streamSessionId = await LobbySession.connectStream(emu);
+        await LobbySession.publish({ rom: { url, name }, streamSessionId,
+          gameId: emu.config.gameId, aspect: StreamPixels.coreGeometry(emu).aspect });
+        setStatus(statusEl, "P1 已就绪 · 等待 P2", "ok");
+      } catch (error) {
+        LobbySession.fail(statusEl, error);
+        EmuCommon.switchTab("roms");
+      } finally {
+        launching = false;
+        LobbySession.lockRomControls(false);
+      }
+    }
+
+    async function refresh() {
+      try {
+        const roms = await refreshRoms();
+        const parents = roms.filter(r => r.name.toLowerCase().endsWith(".zip"));
+        parentSelect.innerHTML = '<option value="">不需要 Parent</option>' + parents.map(r => `<option value="${r.url}">${r.name}</option>`).join("");
+        parentSelect.value = localStorage.getItem("fbneo-parent-url") || "";
+        if (parentSelect.selectedIndex < 0) parentSelect.value = "";
+        const bios = await fetchBiosList();
+        biosSelect.innerHTML = '<option value="">不使用 BIOS</option>' + bios.map(r => `<option value="${r.url}">${r.name}</option>`).join("");
+        biosSelect.value = localStorage.getItem("fbneo-bios-url") || "";
+        if (biosSelect.selectedIndex < 0) biosSelect.value = "";
+        renderRomList(
+          romListEl,
+          roms.filter(r => platformForRom(r.name) === getPlatform()),
+          rom => launch(rom.url, rom.name),
+          async (r) => {
+            if (!confirm(`确定删除 "${r.name}"？`)) return;
+            try {
+              await deleteRom(r.name);
+              setStatus(statusEl, `已删除：${r.name}`, "ok");
+              await refresh();
+            } catch (error) { LobbySession.fail(statusEl, error); }
+          },
+          async (r, newName) => {
+            try {
+              const res = await renameRom(r.name, newName);
+              setStatus(statusEl, `已重命名：${res.name}`, "ok");
+              await refresh();
+            } catch (error) {
+              LobbySession.fail(statusEl, error);
+              throw error;
+            }
+          }
+        );
+        document.getElementById("btnTestRom").hidden = getPlatform() === "arcade" || !roms.some(rom => rom.url === TEST_ROM_URL);
+      } catch (error) { LobbySession.fail(statusEl, error); }
+    }
+
+    if (role === "host") {
+      setStatus(statusEl, "P1：请选择游戏卡带");
+      document.getElementById("romFile").addEventListener("change", async event => {
+        const file = event.target.files?.[0]; event.target.value = "";
+        if (!file) return;
+        try {
+          if (platformForRom(file.name) !== getPlatform()) throw new Error(getPlatform() === "arcade" ? "街机平台只接受 ZIP romset" : "请切换到「街机」再上传 ZIP");
+          setStatus(statusEl, "正在上传：" + file.name);
+          const data = await uploadRom(file);
+          await launch(data.url, data.name);
+        } catch (error) { LobbySession.fail(statusEl, error); }
+      });
+      document.getElementById("btnTestRom").addEventListener("click", () => launch(TEST_ROM_URL, TEST_ROM_NAME));
+      document.getElementById("btnRefresh").addEventListener("click", refresh);
+      biosSelect.addEventListener("change", () => localStorage.setItem("fbneo-bios-url", biosSelect.value));
+      document.getElementById("btnDeleteBios").addEventListener("click", async () => {
+        if (!biosSelect.value) { setStatus(statusEl, "请先选择要删除的 BIOS", "error"); return; }
+        const name = biosSelect.selectedOptions[0].textContent;
+        if (!confirm(`确定删除 BIOS "${name}"？`)) return;
+        try {
+          await deleteBios(name);
+          localStorage.removeItem("fbneo-bios-url");
+          await refresh();
+          setStatus(statusEl, "BIOS 已删除：" + name, "ok");
+        } catch (error) { LobbySession.fail(statusEl, error); }
+      });
+      parentSelect.addEventListener("change", () => localStorage.setItem("fbneo-parent-url", parentSelect.value));
+      document.getElementById("biosUpload").addEventListener("change", async event => {
+        const file = event.target.files?.[0]; event.target.value = "";
+        if (!file) return;
+        try {
+          setStatus(statusEl, "正在上传 BIOS：" + file.name);
+          await uploadBios(file); await refresh();
+          setStatus(statusEl, "BIOS 已保存：" + file.name, "ok");
+        } catch (error) { LobbySession.fail(statusEl, error); }
+      });
+      refresh();
+    } else {
+      document.getElementById("game").innerHTML = '<canvas id="guestCanvas" width="256" height="224"></canvas>';
+      document.getElementById("guestControls").hidden = false;
+      document.getElementById("guestTouch").hidden = false;
+      const resume = document.getElementById("btnResumeStream");
+      resume.textContent = "播放画面和声音";
+      const guest = window.streamGuest = StreamGuest.create({
+        canvas: document.getElementById("guestCanvas"), statusEl,
+        streamStatusEl: document.getElementById("streamStatus"),
+        signalingUrl: window.EJS_NETPLAY_SERVER_OVERRIDE || location.origin,
+      });
+      resume.addEventListener("click", guest.resume);
+      document.getElementById("btnGuestFullscreen").addEventListener("click", () => {
+        guest.resume();
+        const action = document.fullscreenElement ? document.exitFullscreen() : document.getElementById("gameCard").requestFullscreen();
+        action?.catch(() => {});
+      });
+      document.getElementById("btnGuestMute").addEventListener("click", event => {
+        guest.audio.muted = !guest.audio.muted;
+        event.target.textContent = guest.audio.muted ? "开启声音" : "静音";
+        guest.resume();
+      });
+      document.getElementById("guestVolume").addEventListener("input", event => {
+        guest.audio.volume = Number(event.target.value);
+      });
+      document.querySelectorAll("[data-guest-button]").forEach(button => {
+        const index = Number(button.dataset.guestButton);
+        button.addEventListener("pointerdown", event => {
+          event.preventDefault(); button.setPointerCapture(event.pointerId);
+          button.setAttribute("aria-pressed", "true");
+          guest.resume(); guest.setButton(index, 1, "pointer" + event.pointerId);
+        });
+        const release = event => {
+          button.setAttribute("aria-pressed", "false");
+          guest.setButton(index, 0, "pointer" + event.pointerId);
+        };
+        ["pointerup", "pointercancel", "lostpointercapture"].forEach(name => button.addEventListener(name, release));
+      });
+      LobbySession.waitForHost(statusEl).then(async room => {
+        if (room.rom?.name) {
+          setPlatform(room.rom.platform || platformForRom(room.rom.name));
+          setFamicomCartridge(room.rom.name);
+        }
+        const iceServers = await iceReady;
+        await guest.connect({ ...room, iceServers });
+      })
+        .catch(error => LobbySession.fail(statusEl, error));
+    }
+  </script>
+</body>
+</html>

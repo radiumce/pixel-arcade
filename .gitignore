@@ -1,0 +1,35 @@
+# ROMs: never commit any ROM (commercial or homebrew)
+roms/*
+!roms/README.txt
+*.nes
+*.unf
+*.fds
+*.nsf
+*.zip
+roms/bios/
+
+# Dependencies / build
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Test artifacts
+e2e/artifacts/
+e2e/test-results/
+e2e/playwright-report/
+.playwright-cli/
+output/
+
+# Logs / runtime
+*.log
+*.pid
+
+# Secrets
+.env
+.env.*
+ice-servers.json
+.secrets/
+*token*
+!*.example
